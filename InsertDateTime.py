@@ -118,6 +118,14 @@ class InsertDateTimeCommand(sublime_plugin.TextCommand):
         date_time_str = date_time.strftime('%d %B %Y')
         self.date_time_stamps.append(date_time_str)
 
+        # e.g. 19-10-2014
+        date_time_str = date_time.strftime('%d-%m-%Y')
+        self.date_time_stamps.append(date_time_str)
+
+        # e.g. 19/10/2014
+        date_time_str = date_time.strftime('%d/%m/%Y')
+        self.date_time_stamps.append(date_time_str)
+
         # e.g. 2014-10-19
         date_time_str = date_time.strftime('%Y-%m-%d')
         self.date_time_stamps.append(date_time_str)
@@ -132,14 +140,6 @@ class InsertDateTimeCommand(sublime_plugin.TextCommand):
 
         # e.g. 2014-10-19T16:28:57
         date_time_str = date_time.strftime('%Y-%m-%dT%H:%M:%S')
-        self.date_time_stamps.append(date_time_str)
-
-        # e.g. 19-10-2014
-        date_time_str = date_time.strftime('%d-%m-%Y')
-        self.date_time_stamps.append(date_time_str)
-
-        # e.g. 19/10/2014
-        date_time_str = date_time.strftime('%d/%m/%Y')
         self.date_time_stamps.append(date_time_str)
 
     # End of def populate_date_time_stamps()
