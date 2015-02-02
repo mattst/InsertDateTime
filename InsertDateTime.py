@@ -19,19 +19,21 @@
 # Description:      See class description below.
 #
 
+
 import sublime
 import sublime_plugin
 import datetime
 
+
 class InsertDateTimeCommand(sublime_plugin.TextCommand):
     """
-    The InsertDateTimeCommand class is a Sublime Text plugin which creates an
-    overlay panel with a variety of date and/or time stamps and inserts the
-    chosen one into the file at the cursor point(s).
+    The InsertDateTimeCommand class is a Sublime Text plugin which creates an overlay panel with a
+    variety of date and/or time stamps and inserts the chosen one into the file at the cursor
+    point(s).
     """
 
 
-    def run(self, edit):
+    def run(self, edit, **kwargs):
         """
         run() is called when the command is run. Duhhh. :)
         """
@@ -42,10 +44,9 @@ class InsertDateTimeCommand(sublime_plugin.TextCommand):
         # Populate the date_time_stamps list.
         self.populate_date_time_stamps()
 
-        # Show the overlay with the date and/or time stamps. Set it to call the
-        # on_select() method with the index of the selected item.
-        self.view.window().show_quick_panel(self.date_time_stamps,
-                                                        self.on_select)
+        # Show the overlay with the date and/or time stamps. Set it to call the on_select() method
+        # with the index of the selected item.
+        self.view.window().show_quick_panel(self.date_time_stamps, self.on_select)
 
     # End of def run()
 
@@ -62,10 +63,9 @@ class InsertDateTimeCommand(sublime_plugin.TextCommand):
         # Get the text of the selected date and/or time stamp.
         date_time_str = self.date_time_stamps[selected_index]
 
-        # Note that view.insert() can not be used for the text insertion below
-        # because it requires the 'edit' object which will have expired when
-        # run() returned just before this method was called. Edit objects are
-        # not user creatable in ST v3 (although they are in v2), see the APIs.
+        # Note: view.insert() can not be used for the text insertion below because it requires the
+        # edit object which will have expired when run() returned just after this method was called.
+        # Edit objects are not user creatable in ST v3 (although they are in v2), see the APIs.
 
         # Insert the chosen date and/or time stamp at the cursor point(s).
         self.view.run_command('insert', {'characters': date_time_str})
@@ -92,8 +92,8 @@ class InsertDateTimeCommand(sublime_plugin.TextCommand):
 
         # e.g. Sun 19th Oct 2014
         ord_num_abbrv = self.get_ordinal_num_abbrv(date_time.day)
-        date_time_str = (date_time.strftime('%a %d') + ord_num_abbrv +
-                                                date_time.strftime(' %b %Y'))
+        date_time_str =  date_time.strftime('%a %d') + ord_num_abbrv
+        date_time_str += date_time.strftime(' %b %Y')
         self.date_time_stamps.append(date_time_str)
 
         # e.g. Sun 19 Oct 2014 16:28
@@ -106,8 +106,8 @@ class InsertDateTimeCommand(sublime_plugin.TextCommand):
 
         # e.g. Sunday 19th October 2014
         ord_num_abbrv = self.get_ordinal_num_abbrv(date_time.day)
-        date_time_str = (date_time.strftime('%A %d') + ord_num_abbrv +
-                                                date_time.strftime(' %B %Y'))
+        date_time_str =  date_time.strftime('%A %d') + ord_num_abbrv
+        date_time_str += date_time.strftime(' %B %Y')
         self.date_time_stamps.append(date_time_str)
 
         # e.g. 19 Oct 2014
@@ -147,11 +147,10 @@ class InsertDateTimeCommand(sublime_plugin.TextCommand):
 
     def get_ordinal_num_abbrv(self, day_of_month):
         """
-        get_ordinal_num_abbrv() returns a string containing the ordinal number
-        abbreviation of the day_of_month argument. Ordinal numbers are first,
-        second, third, etc. Ordinal number abbreviations are the suffix added to
-        an integer to turn that integer into an ordinal number, for example the
-        'st' part of '1st', the 'nd' of '2nd', and so on.
+        get_ordinal_num_abbrv() returns a string containing the ordinal number abbreviation of the
+        day_of_month argument. Ordinal numbers are first, second, third, etc. Ordinal number
+        abbreviations are the suffix added to an integer to turn that integer into an ordinal
+        number, for example the 'st' part of '1st', the 'nd' of '2nd', and so on.
         """
 
         if day_of_month == 1 or day_of_month == 21 or day_of_month == 31:
