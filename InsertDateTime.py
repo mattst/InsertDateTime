@@ -10,7 +10,7 @@
 #
 # Written by:      Matthew Stanfield
 #
-# Last Edited:     2015-02-02
+# Last Edited:     2015-09-25
 #
 # ST Command:      insert_date_time
 #
@@ -143,8 +143,23 @@ class InsertDateTimeCommand(sublime_plugin.TextCommand):
         # https://docs.python.org/2/library/datetime.html
 
         # The order added below will be the same as displayed in the overlay.
-
         # ToDo: Before distribution add US date formats. e.g. 10/19/2014
+
+        # e.g. 2014-10-19
+        date_time_str = date_time.strftime('%Y-%m-%d')
+        self.date_time_stamps.append(date_time_str)
+
+        # e.g. 2014-10-19 16:28
+        date_time_str = date_time.strftime('%Y-%m-%d %H:%M')
+        self.date_time_stamps.append(date_time_str)
+
+        # e.g. 19-10-2014
+        date_time_str = date_time.strftime('%d-%m-%Y')
+        self.date_time_stamps.append(date_time_str)
+
+        # e.g. 19/10/2014
+        date_time_str = date_time.strftime('%d/%m/%Y')
+        self.date_time_stamps.append(date_time_str)
 
         # e.g. Sun 19 Oct 2014
         date_time_str = date_time.strftime('%a %d %b %Y')
@@ -154,10 +169,6 @@ class InsertDateTimeCommand(sublime_plugin.TextCommand):
         ord_num_abbrv = self.get_ordinal_num_abbrv(date_time.day)
         date_time_str =  date_time.strftime('%a %d') + ord_num_abbrv
         date_time_str += date_time.strftime(' %b %Y')
-        self.date_time_stamps.append(date_time_str)
-
-        # e.g. Sun 19 Oct 2014 16:28
-        date_time_str = date_time.strftime('%a %d %b %Y %H:%M')
         self.date_time_stamps.append(date_time_str)
 
         # e.g. Sunday 19 October 2014
@@ -171,36 +182,16 @@ class InsertDateTimeCommand(sublime_plugin.TextCommand):
         self.date_time_stamps.append(date_time_str)
 
         # e.g. 19 Oct 2014
-        date_time_str = date_time.strftime('%d %b %Y')
-        self.date_time_stamps.append(date_time_str)
+        # date_time_str = date_time.strftime('%d %b %Y')
+        # self.date_time_stamps.append(date_time_str)
 
         # e.g. 19 October 2014
-        date_time_str = date_time.strftime('%d %B %Y')
-        self.date_time_stamps.append(date_time_str)
-
-        # e.g. 19-10-2014
-        date_time_str = date_time.strftime('%d-%m-%Y')
-        self.date_time_stamps.append(date_time_str)
-
-        # e.g. 19/10/2014
-        date_time_str = date_time.strftime('%d/%m/%Y')
-        self.date_time_stamps.append(date_time_str)
-
-        # e.g. 2014-10-19
-        date_time_str = date_time.strftime('%Y-%m-%d')
-        self.date_time_stamps.append(date_time_str)
-
-        # e.g. 2014-10-19 16:28
-        date_time_str = date_time.strftime('%Y-%m-%d %H:%M')
-        self.date_time_stamps.append(date_time_str)
+        # date_time_str = date_time.strftime('%d %B %Y')
+        # self.date_time_stamps.append(date_time_str)
 
         # e.g. 2014-10-19 16:28:57
-        date_time_str = date_time.strftime('%Y-%m-%d %H:%M:%S')
-        self.date_time_stamps.append(date_time_str)
-
-        # e.g. 2014-10-19T16:28:57
-        date_time_str = date_time.strftime('%Y-%m-%dT%H:%M:%S')
-        self.date_time_stamps.append(date_time_str)
+        # date_time_str = date_time.strftime('%Y-%m-%d %H:%M:%S')
+        # self.date_time_stamps.append(date_time_str)
 
     # End of def populate_date_time_stamps()
 
