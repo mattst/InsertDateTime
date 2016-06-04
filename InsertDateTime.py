@@ -184,8 +184,16 @@ class InsertDateTimeCommand(sublime_plugin.TextCommand):
     def get_date_time_str(self, format_string):
         """ Returns the appropriate date time stamp string. """
 
-        if not isinstance(format_string, str) or len(format_string) == 0:
+        # Ignore empty strings or values which are not a string.
+
+        try:
+            if len(format_string) == 0:
+                raise ValueError
+
+        except Exception:
             return None
+
+        return self.date_time.strftime(format_string)
 
         if format_string == "timestamp_iso_8601":
             return self.get_timestamp_iso_8601()
