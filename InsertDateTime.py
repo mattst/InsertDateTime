@@ -3,219 +3,280 @@
 #
 # File:            InsertDateTime.py
 #
-# Requirements:    Plugin for Sublime Text v.2 and v.3
+# Requirements:    Plugin for Sublime Text v3
 #
-# Tested:          ST v.3 build 3065 - tested and working.
-#                  ST v.2 build 2221 - tested and working.
-#
-# Written by:      Matthew Stanfield
-#
-# Last Edited:     2015-09-25
+# Written by:      mattst - https://github.com/mattst
 #
 # ST Command:      insert_date_time
 #
-# Optional Arg:    index: an integer value indexing into the date_time_stamps list. If used the
-#                  required date time stamp will be inserted and the overlay panel will not be
-#                  shown for the user to select a date time stamp from.
+# Optional Arg:    format: a date time formatting string (see below)
 #
-# Description:     See class description below.
+# Setting File:    InsertDateTime.sublime-settings
 #
-
+# Settings Fields: formats: a list of date time formatting strings (see below)
+#                  which controls which date time stamps will be displayed in
+#                  the overlay panel for user selection.
+#
+#                  fixed_width_font: a boolean value which controls whether to
+#                  use a fixed width font in the overlay panel (default: true)
+#
+# Formats:
+#
+# The date time formatting strings must be in the form used by the strftime()
+# method of the Python DateTime class. For example "%Y-%m-%d" would give a date
+# of "YYYY-MM-DD".
+#
+# Note that "%Z" (timezone name) and "%z" (UTC offset) can not be used as these
+# rely of information unavailable to a plugin for Sublime Text. However the UTC
+# offset value can be retrieved by other means and it will be shown by the
+# timestamps listed below (with the exception of timestamp_posix_time).
+#
+# The list of formatting characters can be viewed here:
+# http://docs.python.org/3.3/library/time.html#time.strftime
+# http://docs.python.org/2.6/library/datetime.html#strftime-strptime-behavior
+#
+# In addition the following formatting strings may be used:
+#
+# timestamp_iso_8601:        a timestamp in the following form:
+#                            2016-05-29T16:07:59+01:00
+#                            Used by: ISO 8601 and RFC 3339
+#
+# timestamp_rfc_3339:        same as: timestamp_iso_8601
+#
+# timestamp_rfc_3339_human:  a timestamp in the following form:
+#                            2016-05-29 16:07:59+01:00
+#                            Human readable form of: RFC 3339
+#
+# timestamp_rfc_5322:        a timestamp in the following form:
+#                            Sun, 29 May 2016 16:07:59 +0100
+#                            Email form: RFC 5321, 5322
+#
+# timestamp_posix_time:      POSIX time, aka Unix or Epoch time; the
+#                            number of elapsed seconds since:
+#                            1970-01-01 00:00:00 +00:00
+#
+# Usage:
+#
+# When the InsertDateTime plugin is run it first checks to see if the calling
+# command used the optional "format" arg with a date time string, if so the
+# appropriate date time stamp will be inserted immediately. If the command was
+# not run with the "format" arg then it will display the overlay panel which
+# will contain the date time stamps corresponding to those set in the "formats"
+# list in the settings file. Note: the plugin works with multiple selections.
+#
+# Key Bindings Examples:
+#
+# Show the overlay panel with the date time stamps:
+#
+# { "keys": ["ctrl+?"], "command": "insert_date_time" },
+#
+# Immediately insert the specified date time stamps:
+#
+# { "keys": ["ctrl+?"], "command": "insert_date_time",
+#                       "args": {"format": "%Y-%m-%d"} },
+#
+# { "keys": ["ctrl+?"], "command": "insert_date_time",
+#                       "args": {"format": "timestamp_iso_8601"} },
+#
+# InsertDateTime.sublime-settings File Example:
+#
+# {
+#     "formats":
+#     [
+#         "%H:%M:%S",
+#         "%Y-%m-%d",
+#         "%Y-%m-%d %H:%M",
+#         "%d-%m-%Y",
+#         "%d %B %Y",
+#         "%A %d %B %Y",
+#         "timestamp_iso_8601",
+#     ],
+#     "fixed_width_font": true
+# }
+#
 
 import sublime
 import sublime_plugin
-import datetime
-
+import time
+from datetime import datetime
 
 class InsertDateTimeCommand(sublime_plugin.TextCommand):
     """
-    The InsertDateTimeCommand class is a Sublime Text plugin which inserts a variety of date time
-    stamps either by the user specifying one in the command's args or by selecting one from a list
-    displayed in the overlay panel.
+    The InsertDateTimeCommand class is a Sublime Text plugin which inserts a
+    date time stamp. The format for the date time stamp can be specified in the
+    calling command's "format" arg, for immediate insertion, or in the "formats"
+    list in the InsertDateTime.sublime-settings file, in which case a list of
+    date time stamps will be displayed for user selection in the overlay panel.
     """
 
-
     def run(self, edit, **kwargs):
-        """
-        run() is called when the command is run.
-        """
+        """ This is called when the command is run. """
 
-        # Storage for the various date time stamps.
+        self.date_time = datetime.now()
+
+        # Check if the plugin command was run with the "format" arg.
+        # If so insert the appropriate date time string and return.
+
+        format_string = kwargs.get("format", None)
+
+        if format_string is not None:
+            date_time_str = self.get_date_time_str(format_string)
+
+            if date_time_str is not None:
+                self.insert_date_time_stamp(date_time_str)
+                return
+
+        # The plugin command was NOT run with the "format" arg so...
+        # Load the format strings from the settings file and display
+        # the date time strings in the overlay for user selection.
+
+        settings_file = "InsertDateTime.sublime-settings"
+        settings = sublime.load_settings(settings_file)
+        format_strings = settings.get("formats", [])
+        fixed_width_font = settings.get("fixed_width_font", True)
+
         self.date_time_stamps = []
+        self.populate_date_time_stamps(format_strings)
 
-        # Populate the date_time_stamps list.
-        self.populate_date_time_stamps()
-
-        # The desired date time stamp can be set either by the use of the 'index' command arg or
-        # by selecting from a list displayed in the overlay panel.
-
-        # If the 'index' arg was used set the index into the date_time_stamps list.
-        # Note: get_index_setting() will return None if 'index' was not used/invalid.
-        date_time_stamp_index = self.get_index_setting(**kwargs)
-
-        # The 'index' arg was used to set the index into the date_time_stamps list.
-        if date_time_stamp_index is not None:
-
-            # Insert the chosen date time stamp.
-            self.insert_date_time_stamp(date_time_stamp_index)
-
-        # The 'index' arg was not used.
-        else:
-
-            # Show the overlay with the date time stamps for user selection.
-            self.view.window().show_quick_panel(self.date_time_stamps, self.on_select)
-
-    # End of def run()
-
-
-    def get_index_setting(self, **kwargs):
-        """
-        get_index_setting() returns the value of the 'index' arg in the kwargs dictionary if it
-        exists, and it is an integer in the correct range, otherwise it returns None.
-        """
-
-        # If available get the 'index' arg from the kwargs dictionary.
-        if 'index' in kwargs:
-            index_arg_val = kwargs.get('index')
-        else:
-            return None
-
-        # Check that index_arg_val is an integer and in range to index the date_time_stamps list.
-
-        date_time_stamps_upper_bound = len(self.date_time_stamps) - 1
-
-        # A warning message to display if the 'index' arg is invalid.
-        msg = "insert_date_time command: 'index' arg is not an integer in the range 0 to {0:d}"
-        msg = msg.format(date_time_stamps_upper_bound)
-
-        # Note: isinstance(x, int) returns true if x is a bool, so check it is not a bool.
-        if ( not isinstance(index_arg_val, int) or isinstance(index_arg_val, bool) or
-             index_arg_val < 0 or index_arg_val > date_time_stamps_upper_bound ):
-
-            # Output the warning message to the status bar.
+        # Nothing to display.
+        if len(self.date_time_stamps) == 0:
+            msg = "Set the list of date time formats in: " + settings_file
             sublime.status_message(msg)
-            return None
+            return
 
-        # The 'index' arg is in the kwargs dictionary and is set correctly.
-        return index_arg_val
+        if fixed_width_font: font_flag = sublime.MONOSPACE_FONT
+        else:                font_flag = 0
 
-    # End of def get_index_setting()
+        self.view.window().show_quick_panel(self.date_time_stamps,
+                                self.on_overlay_selection_done, font_flag)
 
 
-    def on_select(self, selected_index):
-        """
-        on_select() will be called with the selected index from the overlay.
-        """
+    def on_overlay_selection_done(self, selected_index):
+        """ This is called with the selected index from the overlay. """
 
-        # No selection was made, the overlay was cancelled.
+        # User cancelled the overlay.
         if selected_index == -1:
             return
 
-        # Insert the chosen date time stamp.
-        self.insert_date_time_stamp(selected_index)
-
-    # End of def on_select()
-
-
-    def insert_date_time_stamp(self, selected_index):
-        """
-        insert_date_time_stamp() inserts the date time stamp at the cursor point(s).
-        """
-
-        # Get the text of the selected date time stamp.
         date_time_str = self.date_time_stamps[selected_index]
+        self.insert_date_time_stamp(date_time_str)
 
-        # Insert the chosen date time stamp at the cursor point(s).
+
+    def insert_date_time_stamp(self, date_time_str):
+        """ Inserts the date time stamp at the cursor point(s). """
+
         self.view.run_command('insert', {'characters': date_time_str})
 
-    # End of def insert_date_time_stamp()
+
+    def populate_date_time_stamps(self, format_strings):
+        """ Populates the date_time_stamps list. """
+
+        for format_string in format_strings:
+
+            date_time_str = self.get_date_time_str(format_string)
+
+            if date_time_str is not None:
+                # Avoid duplicate entries.
+                if date_time_str not in self.date_time_stamps:
+                    self.date_time_stamps.append(date_time_str)
 
 
-    def populate_date_time_stamps(self):
-        """
-        populate_date_time_stamps() fills the date_time_stamps list.
-        """
+    def get_date_time_str(self, format_string):
+        """ Returns the appropriate date time stamp string. """
 
-        # Get the current date and time.
-        date_time = datetime.datetime.now()
+        if not isinstance(format_string, str) or len(format_string) == 0:
+            return None
 
-        # The format codes can be viewed in section 8.1.7 of the url below:
-        # https://docs.python.org/2/library/datetime.html
+        if format_string == "timestamp_iso_8601":
+            return self.get_timestamp_iso_8601()
 
-        # The order added below will be the same as displayed in the overlay.
-        # ToDo: Before distribution add US date formats. e.g. 10/19/2014
+        if format_string == "timestamp_rfc_3339":
+            return self.get_timestamp_iso_8601()
 
-        # e.g. 2014-10-19
-        date_time_str = date_time.strftime('%Y-%m-%d')
-        self.date_time_stamps.append(date_time_str)
+        elif format_string == "timestamp_rfc_3339_human":
+            return self.get_timestamp_rfc_3339_human()
 
-        # e.g. 2014-10-19 16:28
-        date_time_str = date_time.strftime('%Y-%m-%d %H:%M')
-        self.date_time_stamps.append(date_time_str)
+        elif format_string == "timestamp_rfc_5322":
+            return self.get_timestamp_rfc_5322()
 
-        # e.g. 19-10-2014
-        date_time_str = date_time.strftime('%d-%m-%Y')
-        self.date_time_stamps.append(date_time_str)
-
-        # e.g. 19/10/2014
-        date_time_str = date_time.strftime('%d/%m/%Y')
-        self.date_time_stamps.append(date_time_str)
-
-        # e.g. Sun 19 Oct 2014
-        date_time_str = date_time.strftime('%a %d %b %Y')
-        self.date_time_stamps.append(date_time_str)
-
-        # e.g. Sun 19th Oct 2014
-        ord_num_abbrv = self.get_ordinal_num_abbrv(date_time.day)
-        date_time_str =  date_time.strftime('%a %d') + ord_num_abbrv
-        date_time_str += date_time.strftime(' %b %Y')
-        self.date_time_stamps.append(date_time_str)
-
-        # e.g. Sunday 19 October 2014
-        date_time_str = date_time.strftime('%A %d %B %Y')
-        self.date_time_stamps.append(date_time_str)
-
-        # e.g. Sunday 19th October 2014
-        ord_num_abbrv = self.get_ordinal_num_abbrv(date_time.day)
-        date_time_str =  date_time.strftime('%A %d') + ord_num_abbrv
-        date_time_str += date_time.strftime(' %B %Y')
-        self.date_time_stamps.append(date_time_str)
-
-        # e.g. 19 Oct 2014
-        # date_time_str = date_time.strftime('%d %b %Y')
-        # self.date_time_stamps.append(date_time_str)
-
-        # e.g. 19 October 2014
-        # date_time_str = date_time.strftime('%d %B %Y')
-        # self.date_time_stamps.append(date_time_str)
-
-        # e.g. 2014-10-19 16:28:57
-        # date_time_str = date_time.strftime('%Y-%m-%d %H:%M:%S')
-        # self.date_time_stamps.append(date_time_str)
-
-    # End of def populate_date_time_stamps()
-
-
-    def get_ordinal_num_abbrv(self, day_of_month):
-        """
-        get_ordinal_num_abbrv() returns a string containing the ordinal number abbreviation of the
-        day_of_month argument. Ordinal numbers are first, second, third, etc. Ordinal number
-        abbreviations are the suffix added to an integer to turn that integer into an ordinal
-        number, for example the 'st' part of '1st', the 'nd' of '2nd', and so on.
-        """
-
-        if day_of_month == 1 or day_of_month == 21 or day_of_month == 31:
-            return "st"
-
-        elif day_of_month == 2 or day_of_month == 22:
-            return "nd"
-
-        elif day_of_month == 3 or day_of_month == 23:
-            return "rd"
+        elif format_string == "timestamp_posix_time":
+            return self.get_timestamp_posix_time()
 
         else:
-            return "th"
+            return self.date_time.strftime(format_string)
 
-    # End of def get_ordinal_num_abbrv()
 
-# End of InsertDateTimeCommand() class.
+    def get_timestamp_iso_8601(self):
+        """
+        Returns a timestamp in the form: 2016-05-29T16:07:59+01:00
+        This is the most common timestamp: ISO 8601 and RFC 3339.
+        """
+
+        format_style = "%Y-%m-%dT%H:%M:%S"
+        date_time_str = self.date_time.strftime(format_style)
+        utc_offset_str = self.get_utc_offset_str()
+        date_time_str += utc_offset_str
+        return date_time_str
+
+
+    def get_timestamp_rfc_3339_human(self):
+        """
+        Returns a timestamp in the form: 2016-05-29 16:07:59+01:00
+        The widely used more easily readable form of: RFC 3339
+        """
+
+        return self.get_timestamp_iso_8601().replace("T", " ")
+
+
+    def get_timestamp_rfc_5322(self):
+        """
+        Returns a timestamp in the form: Sun, 29 May 2016 16:07:59 +0100
+        This is the standard form used in sending email: RFC 5321, 5322
+        """
+
+        format_style = "%a, %d %b %Y %H:%M:%S"
+        date_time_str = self.date_time.strftime(format_style)
+        utc_offset_str = self.get_utc_offset_str()
+        date_time_str += " " + utc_offset_str.replace(":", "")
+        return date_time_str
+
+
+    def get_timestamp_posix_time(self):
+        """
+        Returns POSIX time, aka Unix time aka Epoch time; the number
+        of seconds that have elapsed since 1970-01-01T00:00:00+00:00.
+        """
+
+        timestamp = time.time()
+        time_unix = str(int(timestamp))
+        return time_unix
+
+
+    def get_utc_offset_str(self):
+        """
+        Returns a UTC offset string of the current time suitable for use in the
+        most widely used timestamps (i.e. ISO 8601, RFC 3339). For example:
+        10 hours ahead, 5 hours behind, and time is UTC: +10:00, -05:00, +00:00
+        """
+
+        # Calculate the UTC time difference in seconds.
+
+        timestamp = time.time()
+        time_now = datetime.fromtimestamp(timestamp)
+        time_utc = datetime.utcfromtimestamp(timestamp)
+        utc_offset_secs = (time_now - time_utc).total_seconds()
+
+        is_time_now_behind_utc = False
+
+        if utc_offset_secs < 0:
+            utc_offset_secs *= -1
+            is_time_now_behind_utc = True
+
+        # Build a UTC offset string suitable for use in a timestamp.
+
+        utc_offset = time.gmtime(utc_offset_secs)
+        utc_offset_fmt = time.strftime("%H:%M", utc_offset)
+        pos_neg_prefix = "-" if is_time_now_behind_utc else "+"
+        utc_offset_str = pos_neg_prefix + utc_offset_fmt
+
+        return utc_offset_str

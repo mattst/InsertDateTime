@@ -1,0 +1,22 @@
+{
+    "formats":
+    [
+        "%H:%M",
+        "%H:%M:%S",
+        "%Y-%m-%d",
+        "%Y-%m-%d %H:%M",
+        "%Y-%m-%d %H:%M:%S",
+        "%d-%m-%Y",
+        "%d/%m/%Y",
+        "%d %b %Y",
+        "%d %B %Y",
+        "%a %d %b %Y",
+        "%A %d %B %Y",
+        "timestamp_rfc_3339_human",
+        "timestamp_iso_8601",
+        "timestamp_rfc_5322",
+        "timestamp_posix_time"
+    ],
+
+    "fixed_width_font": true
+}
