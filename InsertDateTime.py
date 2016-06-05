@@ -26,7 +26,7 @@
 # method of the Python DateTime class. For example "%Y-%m-%d" would give a date
 # of "YYYY-MM-DD".
 #
-# Note that "%Z" (timezone name) and "%z" (UTC offset) can not be used as these
+# Note that "%Z" (time zone name) and "%z" (UTC offset) can not be used as these
 # rely of information unavailable to a plugin for Sublime Text. However the UTC
 # offset value can be retrieved by other means and it will be shown by the
 # timestamps listed below (with the exception of timestamp_posix_time).
@@ -40,19 +40,24 @@
 # timestamp_iso_8601:        a timestamp in the following form:
 #                            2016-05-29T16:07:59+01:00
 #                            Used by: ISO 8601 and RFC 3339
+#                            This is the international standard.
 #
 # timestamp_rfc_3339:        same as: timestamp_iso_8601
+#                            ISO 8601, the international standard, was
+#                            adapted from RFC 3339 the Internet standard.
 #
 # timestamp_rfc_3339_human:  a timestamp in the following form:
 #                            2016-05-29 16:07:59+01:00
 #                            Human readable form of: RFC 3339
+#                            Not valid under ISO 8601.
 #
 # timestamp_rfc_5322:        a timestamp in the following form:
 #                            Sun, 29 May 2016 16:07:59 +0100
-#                            Email form: RFC 5321, 5322
+#                            Used by: RFC 5321, 5322
+#                            This is the standard used by email.
 #
 # timestamp_posix_time:      POSIX time, aka Unix or Epoch time; the
-#                            number of elapsed seconds since:
+#                            total number of elapsed seconds since:
 #                            1970-01-01 00:00:00 +00:00
 #
 # Usage:
@@ -193,7 +198,7 @@ class InsertDateTimeCommand(sublime_plugin.TextCommand):
         except Exception:
             return None
 
-        return self.date_time.strftime(format_string)
+        # The various timestamps provided directly by this plugin.
 
         if format_string == "timestamp_iso_8601":
             return self.get_timestamp_iso_8601()
@@ -210,6 +215,7 @@ class InsertDateTimeCommand(sublime_plugin.TextCommand):
         elif format_string == "timestamp_posix_time":
             return self.get_timestamp_posix_time()
 
+        # Converts a Python date time format string.
         else:
             return self.date_time.strftime(format_string)
 
@@ -218,19 +224,21 @@ class InsertDateTimeCommand(sublime_plugin.TextCommand):
         """
         Returns a timestamp in the form: 2016-05-29T16:07:59+01:00
         This is the most common timestamp: ISO 8601 and RFC 3339.
+        ISO 8601 is the international timestamp standard which was
+        adapted from RFC 3339, the Internet timestamp standard.
         """
 
         format_style = "%Y-%m-%dT%H:%M:%S"
         date_time_str = self.date_time.strftime(format_style)
-        utc_offset_str = self.get_utc_offset_str()
-        date_time_str += utc_offset_str
+        date_time_str += self.get_utc_offset_str()
         return date_time_str
 
 
     def get_timestamp_rfc_3339_human(self):
         """
         Returns a timestamp in the form: 2016-05-29 16:07:59+01:00
-        The widely used more easily readable form of: RFC 3339
+        The widely used, more easily readable, form of: RFC 3339
+        This variation is not allowed under ISO 8601.
         """
 
         return self.get_timestamp_iso_8601().replace("T", " ")
@@ -244,8 +252,7 @@ class InsertDateTimeCommand(sublime_plugin.TextCommand):
 
         format_style = "%a, %d %b %Y %H:%M:%S"
         date_time_str = self.date_time.strftime(format_style)
-        utc_offset_str = self.get_utc_offset_str()
-        date_time_str += " " + utc_offset_str.replace(":", "")
+        date_time_str += " " + self.get_utc_offset_str().replace(":", "")
         return date_time_str
 
 
@@ -256,8 +263,8 @@ class InsertDateTimeCommand(sublime_plugin.TextCommand):
         """
 
         timestamp = time.time()
-        time_unix = str(int(timestamp))
-        return time_unix
+        time_posix = str(int(timestamp))
+        return time_posix
 
 
     def get_utc_offset_str(self):
@@ -267,24 +274,23 @@ class InsertDateTimeCommand(sublime_plugin.TextCommand):
         10 hours ahead, 5 hours behind, and time is UTC: +10:00, -05:00, +00:00
         """
 
-        # Calculate the UTC time difference in seconds.
+        # Note that total_seconds() is Python 2.7+ so can
+        # not be used below because ST v2 uses Python 2.6.
+        # See git revision "a26551d4b2" for the old code.
 
         timestamp = time.time()
         time_now = datetime.fromtimestamp(timestamp)
         time_utc = datetime.utcfromtimestamp(timestamp)
-        utc_offset_secs = (time_now - time_utc).total_seconds()
 
-        is_time_now_behind_utc = False
+        if time_now >= time_utc:
+            time_diff = time_now - time_utc
+            utc_offset_prefix = "+"
+        else:
+            time_diff = time_utc - time_now
+            utc_offset_prefix = "-"
 
-        if utc_offset_secs < 0:
-            utc_offset_secs *= -1
-            is_time_now_behind_utc = True
-
-        # Build a UTC offset string suitable for use in a timestamp.
-
-        utc_offset = time.gmtime(utc_offset_secs)
+        utc_offset = time.gmtime(time_diff.seconds)
         utc_offset_fmt = time.strftime("%H:%M", utc_offset)
-        pos_neg_prefix = "-" if is_time_now_behind_utc else "+"
-        utc_offset_str = pos_neg_prefix + utc_offset_fmt
+        utc_offset_str = utc_offset_prefix + utc_offset_fmt
 
         return utc_offset_str
