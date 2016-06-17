@@ -3,18 +3,19 @@
 #
 # File:            InsertDateTime.py
 #
-# Requirements:    Plugin for Sublime Text v3
+# Requirements:    Plugin for Sublime Text v2 and v3
 #
 # Written by:      mattst - https://github.com/mattst
 #
 # ST Command:      insert_date_time
 #
-# Optional Arg:    format: a date time formatting string (see below)
+# Optional Arg:    format: a date time formatting string (see below) which
+#                  controls which date time string should be inserted.
 #
 # Setting File:    InsertDateTime.sublime-settings
 #
 # Settings Fields: formats: a list of date time formatting strings (see below)
-#                  which controls which date time stamps will be displayed in
+#                  which controls which date time strings will be displayed in
 #                  the overlay panel for user selection.
 #
 #                  fixed_width_font: a boolean value which controls whether to
@@ -24,34 +25,34 @@
 #
 # The date time formatting strings must be in the form used by the strftime()
 # method of the Python DateTime class. For example "%Y-%m-%d" would give a date
-# of "YYYY-MM-DD".
+# like "2016-06-17", while "%A %d %B %Y" would give "Friday 17 June 2016".
 #
 # Note that "%Z" (time zone name) and "%z" (UTC offset) can not be used as these
 # rely of information unavailable to a plugin for Sublime Text. However the UTC
-# offset value can be retrieved by other means and it will be shown by the
-# timestamps listed below (with the exception of timestamp_posix_time).
+# offset value can be retrieved by other means and it will be shown by various
+# timestamps listed below.
 #
-# The list of formatting characters can be viewed here:
+# Lists of Python date time formatting characters can be viewed here:
 # http://docs.python.org/3.3/library/time.html#time.strftime
 # http://docs.python.org/2.6/library/datetime.html#strftime-strptime-behavior
 #
 # In addition the following formatting strings may be used:
 #
-# timestamp_iso_8601:        a timestamp in the following form:
+# timestamp_iso_8601:        A timestamp in the following form:
 #                            2016-05-29T16:07:59+01:00
 #                            Used by: ISO 8601 and RFC 3339
-#                            This is the international standard.
+#                            This is the international and Internet standard.
 #
-# timestamp_rfc_3339:        same as: timestamp_iso_8601
+# timestamp_rfc_3339:        Same as: timestamp_iso_8601
 #                            ISO 8601, the international standard, was
 #                            adapted from RFC 3339 the Internet standard.
 #
-# timestamp_rfc_3339_human:  a timestamp in the following form:
+# timestamp_rfc_3339_human:  A timestamp in the following form:
 #                            2016-05-29 16:07:59+01:00
 #                            Human readable form of: RFC 3339
 #                            Not valid under ISO 8601.
 #
-# timestamp_rfc_5322:        a timestamp in the following form:
+# timestamp_rfc_5322:        A timestamp in the following form:
 #                            Sun, 29 May 2016 16:07:59 +0100
 #                            Used by: RFC 5321, 5322
 #                            This is the standard used by email.
@@ -63,19 +64,19 @@
 # Usage:
 #
 # When the InsertDateTime plugin is run it first checks to see if the calling
-# command used the optional "format" arg with a date time string, if so the
-# appropriate date time stamp will be inserted immediately. If the command was
-# not run with the "format" arg then it will display the overlay panel which
-# will contain the date time stamps corresponding to those set in the "formats"
-# list in the settings file. Note: the plugin works with multiple selections.
+# command used the optional "format" arg, if so the appropriate date time string
+# will be inserted immediately. If the command was not run with the "format" arg
+# then the plugin will display the overlay panel with the date time strings that
+# correspond to those set in the "formats" list in the settings file. Note that
+# the plugin works with multiple selections.
 #
 # Key Bindings Examples:
 #
-# Show the overlay panel with the date time stamps:
+# Show the overlay panel with the date time strings:
 #
 # { "keys": ["ctrl+?"], "command": "insert_date_time" },
 #
-# Immediately insert the specified date time stamps:
+# Immediately insert the specified date time string:
 #
 # { "keys": ["ctrl+?"], "command": "insert_date_time",
 #                       "args": {"format": "%Y-%m-%d"} },
@@ -108,10 +109,11 @@ from datetime import datetime
 class InsertDateTimeCommand(sublime_plugin.TextCommand):
     """
     The InsertDateTimeCommand class is a Sublime Text plugin which inserts a
-    date time stamp. The format for the date time stamp can be specified in the
-    calling command's "format" arg, for immediate insertion, or in the "formats"
-    list in the InsertDateTime.sublime-settings file, in which case a list of
-    date time stamps will be displayed for user selection in the overlay panel.
+    date time string. The format for the date time string can be specified in
+    the calling command's "format" arg, for immediate insertion, or in the
+    "formats" list in the InsertDateTime.sublime-settings file, in which case a
+    list of date time strings will be displayed for the user to select from in
+    the overlay panel.
     """
 
     def run(self, edit, **kwargs):
@@ -119,40 +121,66 @@ class InsertDateTimeCommand(sublime_plugin.TextCommand):
 
         self.date_time = datetime.now()
 
-        # Check if the plugin command was run with the "format" arg.
-        # If so insert the appropriate date time string and return.
+        # Check if the plugin command was run with a valid "format" arg,
+        # if so then insert the appropriate date time string and return.
+
+        date_time_str = self.get_date_time_str_from_format_arg(**kwargs)
+
+        if date_time_str is not None:
+            self.insert_date_time_string(date_time_str)
+            return
+
+        # The plugin command was NOT run with the "format" arg so display
+        # the date time strings in the overlay panel for user selection.
+
+        self.display_date_time_strings_in_overlay()
+
+
+    def get_date_time_str_from_format_arg(self, **kwargs):
+        """
+        Determines if the plugin was run with the "format" arg and, if so,
+        returns the corresponding date time string, if not it returns None.
+        """
 
         format_string = kwargs.get("format", None)
 
-        if format_string is not None:
-            date_time_str = self.get_date_time_str(format_string)
+        if format_string is None:
+            return None
 
-            if date_time_str is not None:
-                self.insert_date_time_stamp(date_time_str)
-                return
+        # get_date_time_str() returns None if format_string is invalid.
 
-        # The plugin command was NOT run with the "format" arg so...
-        # Load the format strings from the settings file and display
-        # the date time strings in the overlay for user selection.
+        return self.get_date_time_str(format_string)
+
+
+    def insert_date_time_string(self, date_time_str):
+        """ Inserts the date time string at the cursor point(s). """
+
+        self.view.run_command('insert', {'characters': date_time_str})
+
+
+    def display_date_time_strings_in_overlay(self):
+        """
+        Loads the format strings from the settings file and displays the
+        corresponding date time strings in the overlay for user selection.
+        """
 
         settings_file = "InsertDateTime.sublime-settings"
         settings = sublime.load_settings(settings_file)
         format_strings = settings.get("formats", [])
         fixed_width_font = settings.get("fixed_width_font", True)
 
-        self.date_time_stamps = []
-        self.populate_date_time_stamps(format_strings)
+        self.date_time_strings = []
+        self.populate_date_time_strings(format_strings)
 
         # Nothing to display.
-        if len(self.date_time_stamps) == 0:
+        if len(self.date_time_strings) == 0:
             msg = "Set the list of date time formats in: " + settings_file
             sublime.status_message(msg)
             return
 
-        if fixed_width_font: font_flag = sublime.MONOSPACE_FONT
-        else:                font_flag = 0
+        font_flag = sublime.MONOSPACE_FONT if fixed_width_font else 0
 
-        self.view.window().show_quick_panel(self.date_time_stamps,
+        self.view.window().show_quick_panel(self.date_time_strings,
                                 self.on_overlay_selection_done, font_flag)
 
 
@@ -163,18 +191,12 @@ class InsertDateTimeCommand(sublime_plugin.TextCommand):
         if selected_index == -1:
             return
 
-        date_time_str = self.date_time_stamps[selected_index]
-        self.insert_date_time_stamp(date_time_str)
+        date_time_str = self.date_time_strings[selected_index]
+        self.insert_date_time_string(date_time_str)
 
 
-    def insert_date_time_stamp(self, date_time_str):
-        """ Inserts the date time stamp at the cursor point(s). """
-
-        self.view.run_command('insert', {'characters': date_time_str})
-
-
-    def populate_date_time_stamps(self, format_strings):
-        """ Populates the date_time_stamps list. """
+    def populate_date_time_strings(self, format_strings):
+        """ Populates the date_time_strings list. """
 
         for format_string in format_strings:
 
@@ -182,23 +204,17 @@ class InsertDateTimeCommand(sublime_plugin.TextCommand):
 
             if date_time_str is not None:
                 # Avoid duplicate entries.
-                if date_time_str not in self.date_time_stamps:
-                    self.date_time_stamps.append(date_time_str)
+                if date_time_str not in self.date_time_strings:
+                    self.date_time_strings.append(date_time_str)
 
 
     def get_date_time_str(self, format_string):
-        """ Returns the appropriate date time stamp string. """
+        """ Returns the appropriate date time string or None. """
 
-        # Ignore empty strings or values which are not a string.
-
-        try:
-            if len(format_string) == 0:
-                raise ValueError
-
-        except Exception:
+        if not self.is_format_str_valid(format_string):
             return None
 
-        # The various timestamps provided directly by this plugin.
+        # The various date time strings provided directly by this plugin.
 
         if format_string == "timestamp_iso_8601":
             return self.get_timestamp_iso_8601()
@@ -215,9 +231,30 @@ class InsertDateTimeCommand(sublime_plugin.TextCommand):
         elif format_string == "timestamp_posix_time":
             return self.get_timestamp_posix_time()
 
-        # Converts a Python date time format string.
+        # Convert a Python date time format string.
         else:
             return self.date_time.strftime(format_string)
+
+
+    def is_format_str_valid(self, format_string):
+        """ Determines if format_string is valid for use. """
+
+        # isinstance() needs a Python version dependant string
+        # class; ST v3 uses Python 3.3, ST v2 uses Python 2.6.
+
+        sublime_text_v3 = int(sublime.version()) >= 3000
+
+        if sublime_text_v3:
+            if not isinstance(format_string, str):
+                return False
+        else:
+            if not isinstance(format_string, basestring):
+                return False
+
+        if len(format_string) == 0:
+            return False
+
+        return True
 
 
     def get_timestamp_iso_8601(self):
@@ -270,8 +307,8 @@ class InsertDateTimeCommand(sublime_plugin.TextCommand):
     def get_utc_offset_str(self):
         """
         Returns a UTC offset string of the current time suitable for use in the
-        most widely used timestamps (i.e. ISO 8601, RFC 3339). For example:
-        10 hours ahead, 5 hours behind, and time is UTC: +10:00, -05:00, +00:00
+        most widely used timestamps (i.e. ISO 8601, RFC 3339). e.g. 10 hours
+        ahead, 5 hours behind, and time is UTC: "+10:00", "-05:00", "+00:00".
         """
 
         # Note that total_seconds() is Python 2.7+ so can
@@ -290,7 +327,6 @@ class InsertDateTimeCommand(sublime_plugin.TextCommand):
             utc_offset_prefix = "-"
 
         utc_offset = time.gmtime(time_diff.seconds)
-        utc_offset_fmt = time.strftime("%H:%M", utc_offset)
-        utc_offset_str = utc_offset_prefix + utc_offset_fmt
+        utc_offset_str = time.strftime("%H:%M", utc_offset)
 
-        return utc_offset_str
+        return utc_offset_prefix + utc_offset_str
