@@ -1,5 +1,4 @@
-
-InsertDateTime - Plugin for Sublime Text v2 and v3
+### InsertDateTime - A Plugin for Sublime Text v2 and v3
 
 A Sublime Text plugin to insert date time stamps.
 
@@ -59,7 +58,7 @@ The following standardized formatting strings may be used as the `format` arg or
 
 ### Usage:
 
-The plugin can be launched by selecting `Insert Date Time` from the Command Palette or from key bindings that users must manually add by placing key bindings in their `Default (OS Name).sublime-keymap` file.
+The plugin can be launched by selecting `Insert Date Time` from the `Command Palette` or from key bindings that users must manually add by placing key bindings in their `Default (OS Name).sublime-keymap` file.
 
 When the `InsertDateTime` plugin is run it first checks to see if the calling command included the optional `format` arg, if so the appropriate date time string will be inserted immediately.
 
